@@ -145,6 +145,9 @@ header {
 }
 
 @media screen and (max-width: 1024px) {
+  .logo img {
+    width: 80px;
+  }
   .currency-converter {
     width: 90%;
   }
@@ -153,10 +156,10 @@ header {
     justify-content: space-between;
   }
 
-  .login button{
+  .login button {
     font-size: 8px;
   }
-  .navbar a{
+  .navbar a {
     font-size: 10px;
     padding: 5px;
   }
@@ -172,7 +175,7 @@ header {
 }
 
 @media screen and (max-width: 768px) {
-  .navbar a{
+  .navbar a {
     font-size: 7px;
     padding: 3px;
   }
@@ -184,7 +187,7 @@ header {
   }
 
   .logo img {
-    width: 80px;
+    width: 60px;
   }
 
   .login button {
