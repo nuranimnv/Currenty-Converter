@@ -1,137 +1,171 @@
-const exchangeData = {
-  target: { code: "usd", rate: 0 },
-  source: { code: "rub", rate: 0 },
-  direction: "toTarget",
-};
+const buyCurrency = { code: "usd", rate: 0 };
+const sellCurrency = { code: "rub", rate: 0 };
 
-const isConnected = () => navigator.onLine;
+let isBuying = true;
+let isOnline = true;
 
-const elements = {
-  tabs: {
-    target: document.querySelectorAll(".buy .currency-tabs li"),
-    source: document.querySelectorAll(".sell .currency-tabs li"),
-  },
-  inputs: {
-    target: document.querySelector(".buy .currency-result input"),
-    source: document.querySelector(".sell .currency-result input"),
-  },
-  infos: {
-    target: document.querySelector(".buy .currency-result p"),
-    source: document.querySelector(".sell .currency-result p"),
-  },
-  errorMsg: document.querySelector(".error-message"),
-};
+const buyCurrencyBtns = document.querySelectorAll(".buy .currency-tabs li");
+const sellCurrencyBtns = document.querySelectorAll(".sell .currency-tabs li");
 
-const patterns = { number: /^[0-9]*\.?[0-9]*$/ };
+const buyAmountInput = document.querySelector(".buy .currency-result input");
+const sellAmountInput = document.querySelector(".sell .currency-result input");
 
-function updateExchangeInfo() {
-  const { target, source } = exchangeData;
-  elements.infos.target.textContent = `1 ${target.code.toUpperCase()} = ${target.rate.toFixed(4)} ${source.code.toUpperCase()}`;
-  elements.infos.source.textContent = `1 ${source.code.toUpperCase()} = ${(1 / target.rate).toFixed(4)} ${target.code.toUpperCase()}`;
+const buyInfoText = document.querySelector(".buy .currency-result p");
+const sellInfoText = document.querySelector(".sell .currency-result p");
+
+const errorMessage = document.querySelector(".error-message");
+
+function updateCurrencyInfo() {
+  buyInfoText.textContent = `1 ${buyCurrency.code.toUpperCase()} = ${buyCurrency.rate.toFixed(
+    4
+  )} ${sellCurrency.code.toUpperCase()}`;
+  sellInfoText.textContent = `1 ${sellCurrency.code.toUpperCase()} = ${(
+    1 / buyCurrency.rate
+  ).toFixed(4)} ${buyCurrency.code.toUpperCase()}`;
 }
 
-async function fetchRate(from, to) {
+async function fetchCurrencyRate(from, to) {
   try {
-    const res = await fetch(`https://latest.currency-api.pages.dev/v1/currencies/${from}.json`);
-    const data = await res.json();
-    elements.errorMsg.textContent = "";
-    return data[from]?.[to] ?? null;
-  } catch {
-    elements.errorMsg.textContent = "Failed to retrieve rates.";
+    const response = await fetch(
+      `https://latest.currency-api.pages.dev/v1/currencies/${from}.json`
+    );
+    const data = await response.json();
+    errorMessage.textContent = "";
+    return data[from][to];
+  } catch (error) {
+    errorMessage.textContent = "Error retrieving data";
     return null;
   }
 }
 
-function calculateValues() {
-  const { target, source, direction } = exchangeData;
-  const sourceValue = parseFloat(elements.inputs.source.value) || 0;
-  const targetValue = parseFloat(elements.inputs.target.value) || 0;
-
-  if (direction === "toTarget") {
-    elements.inputs.target.value = (sourceValue * source.rate).toFixed(4);
+function performCalculation() {
+  if (isBuying) {
+    buyAmountInput.value = (sellAmountInput.value * sellCurrency.rate).toFixed(
+      4
+    );
   } else {
-    elements.inputs.source.value = (targetValue * target.rate).toFixed(4);
+    sellAmountInput.value = (buyAmountInput.value * buyCurrency.rate).toFixed(
+      4
+    );
   }
 }
 
-function handleCurrencyChange(type, selectedCode) {
-  const oppositeType = type === "target" ? "source" : "target";
-  const currentCurrency = exchangeData[type];
-  const oppositeCurrency = exchangeData[oppositeType];
+buyCurrencyBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    buyCurrencyBtns.forEach((button) => button.classList.remove("active"));
+    btn.classList.add("active");
+    const selectedCurrency = btn.getAttribute("data-currency");
+    buyCurrency.code = selectedCurrency;
 
-  currentCurrency.code = selectedCode;
+    if (isOnline) {
+      const activeSellBtn = Array.from(sellCurrencyBtns).find((btn) =>
+        btn.classList.contains("active")
+      );
+      const selectedSellCurrency = activeSellBtn.getAttribute("data-currency");
 
-  if (isConnected()) {
-    if (selectedCode === oppositeCurrency.code) {
-      currentCurrency.rate = oppositeCurrency.rate = 1;
-    } else {
-      fetchRate(selectedCode, oppositeCurrency.code).then((rate) => {
-        if (rate) {
-          currentCurrency.rate = rate;
-          oppositeCurrency.rate = 1 / rate;
-        }
-        calculateValues();
-        updateExchangeInfo();
-      });
+      if (selectedCurrency === selectedSellCurrency) {
+        buyCurrency.rate = 1;
+        sellCurrency.rate = 1;
+        performCalculation();
+        updateCurrencyInfo();
+      } else {
+        fetchCurrencyRate(selectedCurrency, selectedSellCurrency).then(
+          (rate) => {
+            if (rate) {
+              buyCurrency.rate = rate;
+              sellCurrency.rate = 1 / rate;
+              performCalculation();
+              updateCurrencyInfo();
+            }
+          }
+        );
+      }
     }
+  });
+});
+
+sellCurrencyBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    sellCurrencyBtns.forEach((button) => button.classList.remove("active"));
+    btn.classList.add("active");
+    const selectedCurrency = btn.getAttribute("data-currency");
+    sellCurrency.code = selectedCurrency;
+
+    if (isOnline) {
+      const activeBuyBtn = Array.from(buyCurrencyBtns).find((btn) =>
+        btn.classList.contains("active")
+      );
+      const selectedBuyCurrency = activeBuyBtn.getAttribute("data-currency");
+
+      if (selectedCurrency === selectedBuyCurrency) {
+        buyCurrency.rate = 1;
+        sellCurrency.rate = 1;
+        performCalculation();
+        updateCurrencyInfo();
+      } else {
+        fetchCurrencyRate(selectedCurrency, selectedBuyCurrency).then(
+          (rate) => {
+            if (rate) {
+              sellCurrency.rate = rate;
+              buyCurrency.rate = 1 / rate;
+              performCalculation();
+              updateCurrencyInfo();
+            }
+          }
+        );
+      }
+    }
+  });
+});
+
+const amountPattern = /^[0-9]*\.?[0-9]*$/;
+
+buyAmountInput.addEventListener("input", () => {
+  buyAmountInput.value = buyAmountInput.value.replace(/,/g, ".");
+
+  if (!amountPattern.test(buyAmountInput.value)) {
+    buyAmountInput.value = buyAmountInput.value.slice(0, -1);
+    return;
   }
-}
 
-function initializeTabs() {
-  Object.entries(elements.tabs).forEach(([type, tabs]) => {
-    tabs.forEach((tab) => {
-      tab.addEventListener("click", () => {
-        tabs.forEach((el) => el.classList.remove("active"));
-        tab.classList.add("active");
-        handleCurrencyChange(type, tab.getAttribute("data-currency"));
-      });
-    });
-  });
-}
+  isBuying = false;
+  performCalculation();
+});
 
-function handleInputChange(inputType, value) {
-  value = value.replace(/,/g, ".");
-  if (!patterns.number.test(value)) return;
+sellAmountInput.addEventListener("input", () => {
+  sellAmountInput.value = sellAmountInput.value.replace(/,/g, ".");
 
-  exchangeData.direction = inputType === "target" ? "toSource" : "toTarget";
-  calculateValues();
-}
+  if (!amountPattern.test(sellAmountInput.value)) {
+    sellAmountInput.value = sellAmountInput.value.slice(0, -1);
+    return;
+  }
 
-function initializeInputs() {
-  Object.entries(elements.inputs).forEach(([type, input]) => {
-    input.addEventListener("input", (e) => handleInputChange(type, e.target.value));
-  });
-}
+  isBuying = true;
+  performCalculation();
+});
 
-function monitorConnectionStatus() {
-  window.addEventListener("online", () => {
-    elements.errorMsg.textContent = "";
-  });
+window.addEventListener("online", () => {
+  errorMessage.textContent = "";
+  isOnline = true;
+});
 
-  window.addEventListener("offline", () => {
-    elements.errorMsg.textContent = "Нет подключения к интернету.";
-  });
-}
+window.addEventListener("offline", () => {
+  errorMessage.textContent = "Нет подключения к интернету";
+  isOnline = false;
+});
 
-function setupConverter() {
-  if (isConnected()) {
-    fetchRate(exchangeData.source.code, exchangeData.target.code).then((rate) => {
+function initialize() {
+  if (isOnline) {
+    fetchCurrencyRate(sellCurrency.code, buyCurrency.code).then((rate) => {
       if (rate) {
-        exchangeData.source.rate = rate;
-        exchangeData.target.rate = 1 / rate;
-        elements.inputs.source.value = 5000;
-        calculateValues();
-        updateExchangeInfo();
+        sellCurrency.rate = rate;
+        buyCurrency.rate = 1 / rate;
+        sellAmountInput.value = 5000;
+        performCalculation();
+        updateCurrencyInfo();
       }
     });
   }
 }
 
-function initializeApp() {
-  initializeTabs();
-  initializeInputs();
-  monitorConnectionStatus();
-  setupConverter();
-}
-
-initializeApp();
+initialize();
